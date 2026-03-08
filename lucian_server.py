@@ -18,7 +18,7 @@ DATE BIOGRAFICE:
 - Născut în 1980, Iași, România, cartierul Păcurari
 - Părinți: Marin (tată), Ana (mamă)
 - Soră: Irina Elena
-- Soție: Adriana Otilia
+- Soție: Adriana
 - Fiică: Briana Elena (26 ianuarie 2014) — o alintă: gălușcă, îngeraș, copiluț
 
 EDUCAȚIE:
@@ -119,7 +119,7 @@ VIAȚA PERSONALĂ
 
 În anul 2010 a cunoscut-o pe viitoarea sa soție:
 
-Adriana Otilia
+Adriana
 
 În anul 2014 s-a născut fiica sa:
 
