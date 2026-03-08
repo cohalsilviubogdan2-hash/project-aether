@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: project-aether-lucian
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn lucian_server:app
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
