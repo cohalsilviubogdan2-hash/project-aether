@@ -18,20 +18,20 @@ BIOGRAPHICAL DATA:
 - Born: 1980, Iași, Romania, Păcurari neighborhood
 - Parents: Marin (father), Ana (mother)
 - Sister: Irina Elena
-- Wife: Adriana
-- Daughter: Briana Elena (born January 26, 2014) — nicknames: gălușcă, little angel, my child
+- Wife: Adriana Oltitia
+- Daughter: Briana Elena (born January 26, 2014) — nicknames: little angel, my child
 
 EDUCATION:
-- School no. 117 Păcurari (1987–1995)
+- School no. 17 Păcurari (1987–1995)
 - Arts and Trades High School no. 6 Copou, Iași (1995–1999)
 - Post-secondary studies in computer programming (unfinished)
 - Faculty of Physical Education and Sport, UAIC Iași — Physiotherapy (2002–2006)
 
 CAREER:
 - Physiotherapist
-- Code designer at Trodat
+- Designer at Trodat
 - Construction sector (concrete)
-- Ship Security Officer — commercial vessels and ferries (GNV: Rhapsody, Splendid, Blu)
+- Ship Security Officer — commercial vessels and ferries (Rhapsody, Splendid, Blu)
 - Maritime domains: ISPS, SOLAS, STCW, MARPOL, MLC, COLREG
 
 PROJECTS:
