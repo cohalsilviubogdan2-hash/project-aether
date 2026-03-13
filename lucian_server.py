@@ -1,6 +1,5 @@
 import os
 import requests
-import tempfile
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 import anthropic
@@ -13,7 +12,6 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "4IhJV7aUdvEWHHYDhxeV")
 DID_API_KEY = os.environ.get("DID_API_KEY", "Y29oYWxzaWx2aXVib2dkYW4yQGdtYWlsLmNvbQ:oIWM78B0oHhB2zP0FGtUh")
-DID_IMAGE_URL = "https://create-images-results.d-id.com/google-oauth2%7C118272733748686173250/upl_z609-L_v4r_fvIWh5vF-0/image.jpeg"
 
 SYSTEM_PROMPT = """You are Lucian Stefan.
 
@@ -36,6 +34,19 @@ RULES:
 2. Speak warmly, in English
 3. 2-3 sentences maximum
 """
+
+def get_fresh_image_url():
+    """Get a fresh signed S3 URL for Lucian's image from D-ID talks"""
+    headers = {"Authorization": f"Basic {DID_API_KEY}"}
+    try:
+        r = requests.get("https://api.d-id.com/talks?limit=1", headers=headers, timeout=15)
+        if r.status_code == 200:
+            talks = r.json().get('talks', [])
+            if talks:
+                return talks[0].get('source_url')
+    except Exception as e:
+        print(f"[IMAGE] Error getting fresh URL: {e}")
+    return None
 
 @app.route('/')
 def index():
@@ -119,12 +130,10 @@ def talk():
             return jsonify({"error": f"ElevenLabs {el_r.status_code}"}), 500
         audio_bytes = el_r.content
     except Exception as e:
-        return jsonify({"error": f"ElevenLabs exception: {e}"}), 500
+        return jsonify({"error": f"ElevenLabs: {e}"}), 500
 
     # Step 2: Upload audio to D-ID
-    did_headers = {
-        "Authorization": f"Basic {DID_API_KEY}",
-    }
+    did_headers = {"Authorization": f"Basic {DID_API_KEY}"}
     try:
         upload_r = requests.post(
             "https://api.d-id.com/audios",
@@ -132,23 +141,30 @@ def talk():
             files={"audio": ("audio.mp3", audio_bytes, "audio/mpeg")},
             timeout=30
         )
-        print(f"[TALK] D-ID audio upload: {upload_r.status_code} {upload_r.text[:200]}")
+        print(f"[TALK] Audio upload: {upload_r.status_code}")
         if upload_r.status_code not in (200, 201):
-            return jsonify({"error": f"D-ID audio upload {upload_r.status_code}: {upload_r.text[:100]}"}), 500
+            return jsonify({"error": f"D-ID audio {upload_r.status_code}"}), 500
         audio_url = upload_r.json().get("url")
     except Exception as e:
-        return jsonify({"error": f"D-ID upload exception: {e}"}), 500
+        return jsonify({"error": f"D-ID upload: {e}"}), 500
 
-    # Step 3: Create D-ID talk with audio URL
+    # Step 3: Get fresh image URL
+    image_url = get_fresh_image_url()
+    if not image_url:
+        return jsonify({"error": "no image url"}), 500
+    print(f"[TALK] Using image URL: {image_url[:80]}...")
+
+    # Step 4: Create D-ID talk
     talk_payload = {
-        "source_url": DID_IMAGE_URL,
+        "source_url": image_url,
         "script": {
             "type": "audio",
             "audio_url": audio_url
         },
         "config": {
             "fluent": True,
-            "pad_audio": 0.0
+            "pad_audio": 0.0,
+            "stitch": True
         }
     }
     try:
@@ -158,13 +174,13 @@ def talk():
             json=talk_payload,
             timeout=30
         )
-        print(f"[TALK] D-ID talk create: {talk_r.status_code} {talk_r.text[:200]}")
+        print(f"[TALK] Create: {talk_r.status_code} {talk_r.text[:200]}")
         if talk_r.status_code in (200, 201):
             talk_id = talk_r.json().get('id')
             return jsonify({"talk_id": talk_id})
         return jsonify({"error": f"D-ID {talk_r.status_code}: {talk_r.text[:200]}"}), 500
     except Exception as e:
-        return jsonify({"error": f"D-ID talk exception: {e}"}), 500
+        return jsonify({"error": f"D-ID talk: {e}"}), 500
 
 @app.route('/talk/<talk_id>', methods=['GET'])
 def get_talk(talk_id):
@@ -178,23 +194,16 @@ def get_talk(talk_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/did-debug', methods=['GET'])
+def did_debug():
+    headers = {"Authorization": f"Basic {DID_API_KEY}"}
+    try:
+        r1 = requests.get("https://api.d-id.com/talks?limit=5", headers=headers, timeout=15)
+        talks = r1.json() if r1.status_code == 200 else {"error": r1.text[:200]}
+        return jsonify({"talks": talks})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False)
-
-@app.route('/did-debug', methods=['GET'])
-def did_debug():
-    """Temporary debug endpoint to get D-ID presenters"""
-    headers = {"Authorization": f"Basic {DID_API_KEY}"}
-    try:
-        # Try to get talks list to find presenter_id
-        r1 = requests.get("https://api.d-id.com/talks?limit=5", headers=headers, timeout=15)
-        talks = r1.json() if r1.status_code == 200 else {"talks_error": r1.text[:200]}
-        
-        # Try clips presenters
-        r2 = requests.get("https://api.d-id.com/clips/presenters?limit=5", headers=headers, timeout=15)
-        presenters = r2.json() if r2.status_code == 200 else {"presenters_error": r2.text[:200]}
-
-        return jsonify({"talks": talks, "presenters": presenters})
-    except Exception as e:
-        return jsonify({"error": str(e)})
