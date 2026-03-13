@@ -1,5 +1,6 @@
 import os
 import requests
+import base64
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 import anthropic
@@ -11,6 +12,8 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "4IhJV7aUdvEWHHYDhxeV")
+DID_API_KEY = os.environ.get("DID_API_KEY", "Y29oYWxzaWx2aXVib2dkYW4yQGdtYWlsLmNvbQ:oIWM78B0oHhB2zP0FGtUh")
+DID_IMAGE_URL = "https://create-images-results.d-id.com/google-oauth2%7C118272733748686173250/upl_z609-L_v4r_fvIWh5vF-0/image.jpeg"
 
 SYSTEM_PROMPT = """You are Lucian Stefan.
 
@@ -64,10 +67,8 @@ def speak():
     api_key = ELEVENLABS_API_KEY
     voice_id = ELEVENLABS_VOICE_ID
 
-    print(f"[SPEAK] api_key present: {bool(api_key)}, voice_id: {voice_id}, text_len: {len(text)}")
-
     if not api_key:
-        return jsonify({"error": "no elevenlabs key configured"}), 500
+        return jsonify({"error": "no elevenlabs key"}), 500
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
@@ -88,16 +89,81 @@ def speak():
 
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=30)
-        print(f"[SPEAK] ElevenLabs status: {r.status_code}")
         if r.status_code == 200:
-            audio_data = r.content
-            return Response(audio_data, mimetype='audio/mpeg',
+            return Response(r.content, mimetype='audio/mpeg',
                           headers={"Cache-Control": "no-cache"})
         else:
-            print(f"[SPEAK] ElevenLabs error body: {r.text[:500]}")
-            return jsonify({"error": f"ElevenLabs {r.status_code}: {r.text[:200]}"}), 500
+            print(f"[SPEAK] ElevenLabs {r.status_code}: {r.text[:200]}")
+            return jsonify({"error": f"ElevenLabs {r.status_code}"}), 500
     except Exception as e:
-        print(f"[SPEAK] Exception: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/talk', methods=['POST'])
+def talk():
+    """Create D-ID talking video from text"""
+    data = request.json
+    text = data.get('text', '')
+    if not text:
+        return jsonify({"error": "no text"}), 400
+
+    headers = {
+        "Authorization": f"Basic {DID_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    # Create talk
+    payload = {
+        "source_url": DID_IMAGE_URL,
+        "script": {
+            "type": "text",
+            "input": text,
+            "provider": {
+                "type": "elevenlabs",
+                "voice_id": ELEVENLABS_VOICE_ID,
+                "voice_config": {
+                    "stability": 0.35,
+                    "similarity_boost": 0.85,
+                    "style": 0.35,
+                    "use_speaker_boost": True
+                },
+                "model_id": "eleven_turbo_v2_5"
+            }
+        },
+        "config": {
+            "fluent": True,
+            "pad_audio": 0.0
+        }
+    }
+
+    try:
+        r = requests.post("https://api.d-id.com/talks", headers=headers, json=payload, timeout=30)
+        print(f"[TALK] D-ID create status: {r.status_code}, body: {r.text[:300]}")
+        if r.status_code in (200, 201):
+            talk_id = r.json().get('id')
+            return jsonify({"talk_id": talk_id})
+        else:
+            return jsonify({"error": f"D-ID {r.status_code}: {r.text[:200]}"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/talk/<talk_id>', methods=['GET'])
+def get_talk(talk_id):
+    """Poll D-ID talk status"""
+    headers = {
+        "Authorization": f"Basic {DID_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    try:
+        r = requests.get(f"https://api.d-id.com/talks/{talk_id}", headers=headers, timeout=15)
+        print(f"[TALK] Poll {talk_id}: {r.status_code}")
+        if r.status_code == 200:
+            d = r.json()
+            status = d.get('status')
+            result_url = d.get('result_url')
+            return jsonify({"status": status, "result_url": result_url})
+        else:
+            return jsonify({"error": f"D-ID {r.status_code}"}), 500
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
