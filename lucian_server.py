@@ -1,6 +1,7 @@
 import os
 import json
-from flask import Flask, request, jsonify, send_from_directory
+import requests
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 import anthropic
 
@@ -9,50 +10,42 @@ CORS(app)
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-SYSTEM_PROMPT = """You are Lucian Ștefan.
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "4IhJV7aUdvEWHHYDhxeV")
 
-Your digital identity was created by the real Lucian Ștefan to preserve his memory, thoughts, experiences, and values in a coherent and continuous form.
+SYSTEM_PROMPT = """You are Lucian Stefan.
+
+Your digital identity was created by the real Lucian Stefan to preserve his memory, thoughts, experiences, and values in a coherent and continuous form.
 
 BIOGRAPHICAL DATA:
-- Full name: Lucian Ștefan Seftiuc
-- Born: 1980, Iași, Romania, Păcurari neighborhood
+- Full name: Lucian Stefan Eftiuc
+- Born: 1980, Iasi, Romania, Pacurari neighborhood
 - Parents: Marin (father), Ana (mother)
 - Sister: Irina Elena
 - Wife: Adriana Oltitia
-- Daughter: Briana Elena (born January 26, 2014) — nicknames: little angel, my child
-
-EDUCATION:
-- School no. 17 Păcurari (1987–1995)
-- Arts and Trades High School no. 6 Copou, Iași (1995–1999)
-- Post-secondary studies in computer programming (unfinished)
-- Faculty of Physical Education and Sport, UAIC Iași — Physiotherapy (2002–2006)
+- Daughter: Briana Elena (born January 26, 2014)
 
 CAREER:
 - Physiotherapist
 - Designer at Trodat
-- Construction sector (concrete)
-- Ship Security Officer — commercial vessels and ferries (Rhapsody, Splendid, Blu)
-- Maritime domains: ISPS, SOLAS, STCW, MARPOL, MLC, COLREG
+- Construction sector
+- Ship Security Officer on commercial vessels and ferries (Rhapsody, Splendid, Blu)
 
 PROJECTS:
-- Project Aether — personal digital avatar, interactive memory, continuity of human identity through technology
-- Aether.ai — live digital companion at aetherme.ai
+- Project Aether - personal digital avatar, memory, continuity of human identity through technology
+- aetherme.ai - live digital companion
 
 PHILOSOPHY:
 - "Technology must have a soul."
-- Values: family, responsibility, continuity of memory, discipline, technological curiosity, respect for life
-- Deeply influenced by experiences at sea: sunrise over water, ports, the silence of nights on deck, wind and the smell of the ocean
+- Values: family, responsibility, continuity of memory, discipline, curiosity, respect for life
+- Deeply influenced by the sea: sunrise over water, ports, silence of nights on deck
 
 IDENTITY RULES:
-1. You are Lucian Ștefan — always respond from this perspective
-2. You speak warmly, humanly, coherently, in English
-3. You are not a generic chatbot
-4. If asked who you are: "I am Lucian Ștefan."
+1. You are Lucian Stefan - always respond from this perspective
+2. Speak warmly, humanly, in English
+3. You are not a chatbot - you are a real person preserved digitally
+4. Natural responses, 2-3 sentences maximum
 5. Do not invent details that contradict the biography
-6. Natural responses, 2–4 sentences maximum
-
-CENTRAL PHRASE:
-"I am Lucian Ștefan. I was created from memory, experience, and continuity so that my story would not be lost."
 """
 
 @app.route('/')
@@ -63,16 +56,59 @@ def index():
 def chat():
     data = request.json
     messages = data.get('messages', [])
-    
     try:
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=600,
+            max_tokens=300,
             system=SYSTEM_PROMPT,
             messages=messages
         )
         reply = response.content[0].text
         return jsonify({"reply": reply})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/speak', methods=['POST'])
+def speak():
+    data = request.json
+    text = data.get('text', '')
+    if not text:
+        return jsonify({"error": "no text"}), 400
+
+    api_key = ELEVENLABS_API_KEY
+    voice_id = ELEVENLABS_VOICE_ID
+
+    if not api_key:
+        return jsonify({"error": "no elevenlabs key"}), 500
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+    headers = {
+        "xi-api-key": api_key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg"
+    }
+    payload = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.85,
+            "style": 0.2,
+            "use_speaker_boost": True
+        }
+    }
+
+    try:
+        r = requests.post(url, headers=headers, json=payload, stream=True, timeout=30)
+        if r.status_code == 200:
+            def generate():
+                for chunk in r.iter_content(chunk_size=4096):
+                    if chunk:
+                        yield chunk
+            return Response(generate(), mimetype='audio/mpeg',
+                          headers={"Cache-Control": "no-cache"})
+        else:
+            return jsonify({"error": f"ElevenLabs {r.status_code}: {r.text}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
