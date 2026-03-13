@@ -181,3 +181,20 @@ def get_talk(talk_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False)
+
+@app.route('/did-debug', methods=['GET'])
+def did_debug():
+    """Temporary debug endpoint to get D-ID presenters"""
+    headers = {"Authorization": f"Basic {DID_API_KEY}"}
+    try:
+        # Try to get talks list to find presenter_id
+        r1 = requests.get("https://api.d-id.com/talks?limit=5", headers=headers, timeout=15)
+        talks = r1.json() if r1.status_code == 200 else {"talks_error": r1.text[:200]}
+        
+        # Try clips presenters
+        r2 = requests.get("https://api.d-id.com/clips/presenters?limit=5", headers=headers, timeout=15)
+        presenters = r2.json() if r2.status_code == 200 else {"presenters_error": r2.text[:200]}
+
+        return jsonify({"talks": talks, "presenters": presenters})
+    except Exception as e:
+        return jsonify({"error": str(e)})
