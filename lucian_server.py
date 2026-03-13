@@ -13,6 +13,9 @@ ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "4IhJV7aUdvEWHHYDhxeV")
 DID_API_KEY = os.environ.get("DID_API_KEY", "Y29oYWxzaWx2aXVib2dkYW4yQGdtYWlsLmNvbQ:oIWM78B0oHhB2zP0FGtUh")
 
+# Talk ID with the new Lucian photo
+LUCIAN_TALK_ID = "tlk_F9tEYx3LJdjivPjg5p1Gb"
+
 SYSTEM_PROMPT = """You are Lucian Stefan.
 
 Your digital identity was created by the real Lucian Stefan to preserve his memory, thoughts, experiences, and values.
@@ -35,17 +38,15 @@ RULES:
 3. 2-3 sentences maximum
 """
 
-def get_fresh_image_url():
-    """Get a fresh signed S3 URL for Lucian's image from D-ID talks"""
+def get_lucian_image_url():
+    """Get fresh signed S3 URL for Lucian's photo"""
     headers = {"Authorization": f"Basic {DID_API_KEY}"}
     try:
-        r = requests.get("https://api.d-id.com/talks?limit=1", headers=headers, timeout=15)
+        r = requests.get(f"https://api.d-id.com/talks/{LUCIAN_TALK_ID}", headers=headers, timeout=15)
         if r.status_code == 200:
-            talks = r.json().get('talks', [])
-            if talks:
-                return talks[0].get('source_url')
+            return r.json().get('source_url')
     except Exception as e:
-        print(f"[IMAGE] Error getting fresh URL: {e}")
+        print(f"[IMAGE] Error: {e}")
     return None
 
 @app.route('/')
@@ -70,6 +71,7 @@ def chat():
 
 @app.route('/speak', methods=['POST'])
 def speak():
+    """ElevenLabs audio only - instant playback"""
     data = request.json
     text = data.get('text', '')
     if not text:
@@ -102,8 +104,11 @@ def speak():
 
 @app.route('/talk', methods=['POST'])
 def talk():
+    """Create D-ID video in background"""
     data = request.json
     text = data.get('text', '')
+    audio_url = data.get('audio_url')  # optional pre-generated audio
+
     if not text:
         return jsonify({"error": "no text"}), 400
 
@@ -144,22 +149,21 @@ def talk():
         print(f"[TALK] Audio upload: {upload_r.status_code}")
         if upload_r.status_code not in (200, 201):
             return jsonify({"error": f"D-ID audio {upload_r.status_code}"}), 500
-        audio_url = upload_r.json().get("url")
+        did_audio_url = upload_r.json().get("url")
     except Exception as e:
         return jsonify({"error": f"D-ID upload: {e}"}), 500
 
     # Step 3: Get fresh image URL
-    image_url = get_fresh_image_url()
+    image_url = get_lucian_image_url()
     if not image_url:
         return jsonify({"error": "no image url"}), 500
-    print(f"[TALK] Using image URL: {image_url[:80]}...")
 
     # Step 4: Create D-ID talk
     talk_payload = {
         "source_url": image_url,
         "script": {
             "type": "audio",
-            "audio_url": audio_url
+            "audio_url": did_audio_url
         },
         "config": {
             "fluent": True,
@@ -178,7 +182,7 @@ def talk():
         if talk_r.status_code in (200, 201):
             talk_id = talk_r.json().get('id')
             return jsonify({"talk_id": talk_id})
-        return jsonify({"error": f"D-ID {talk_r.status_code}: {talk_r.text[:200]}"}), 500
+        return jsonify({"error": f"D-ID {talk_r.status_code}: {talk_r.text[:100]}"}), 500
     except Exception as e:
         return jsonify({"error": f"D-ID talk: {e}"}), 500
 
@@ -198,9 +202,8 @@ def get_talk(talk_id):
 def did_debug():
     headers = {"Authorization": f"Basic {DID_API_KEY}"}
     try:
-        r1 = requests.get("https://api.d-id.com/talks?limit=5", headers=headers, timeout=15)
-        talks = r1.json() if r1.status_code == 200 else {"error": r1.text[:200]}
-        return jsonify({"talks": talks})
+        r = requests.get("https://api.d-id.com/talks?limit=5", headers=headers, timeout=15)
+        return jsonify(r.json() if r.status_code == 200 else {"error": r.text[:200]})
     except Exception as e:
         return jsonify({"error": str(e)})
 

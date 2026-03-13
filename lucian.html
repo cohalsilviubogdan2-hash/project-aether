@@ -187,8 +187,10 @@ function showDots(){
 }
 function hideDots(){const t=document.getElementById('tid');if(t)t.remove();}
 
-/* D-ID VIDEO + ELEVENLABS FALLBACK */
+/* AUDIO INSTANT + VIDEO IN PARALLEL */
 let currentVideo=null;
+let pendingVideoUrl=null;
+let audioPlaying=false;
 
 async function speak(text){
   const sw=document.getElementById('sw');
@@ -196,20 +198,17 @@ async function speak(text){
   if(currentAudio){currentAudio.pause();currentAudio=null;}
   if(currentVideo){currentVideo.pause();currentVideo.remove();currentVideo=null;pImg.style.opacity='1';}
   sw.classList.remove('on');
+  audioPlaying=false;
+  pendingVideoUrl=null;
 
-  // Try D-ID video
-  try{
-    const r1=await fetch('/talk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-    if(r1.ok){
-      const d1=await r1.json();
-      if(d1.talk_id){
-        const videoUrl=await pollTalk(d1.talk_id);
-        if(videoUrl){ playVideo(videoUrl,sw,pImg); return; }
-      }
-    }
-  }catch(e){ console.log('D-ID fallback',e); }
+  // Launch both in parallel
+  const audioPromise=playAudio(text, sw, pImg);
+  const videoPromise=prepareVideo(text);
 
-  // Fallback: ElevenLabs audio only
+  await audioPromise;
+}
+
+async function playAudio(text, sw, pImg){
   try{
     const res=await fetch('/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
     if(!res.ok) return;
@@ -217,15 +216,48 @@ async function speak(text){
     const url=URL.createObjectURL(blob);
     const audio=new Audio(url);
     currentAudio=audio;
+    audioPlaying=true;
     audio.onplay=()=>sw.classList.add('on');
-    audio.onended=()=>{sw.classList.remove('on');URL.revokeObjectURL(url);currentAudio=null;autoListen();};
-    audio.onerror=()=>{sw.classList.remove('on');currentAudio=null;};
+    audio.onended=()=>{
+      sw.classList.remove('on');
+      URL.revokeObjectURL(url);
+      currentAudio=null;
+      audioPlaying=false;
+      // If video is ready, play it now
+      if(pendingVideoUrl){
+        playVideo(pendingVideoUrl, sw, pImg);
+        pendingVideoUrl=null;
+      } else {
+        autoListen();
+      }
+    };
+    audio.onerror=()=>{sw.classList.remove('on');currentAudio=null;audioPlaying=false;};
     audio.play().catch(()=>{});
   }catch(e){ sw.classList.remove('on'); }
 }
 
-async function pollTalk(talkId,attempts=0){
-  if(attempts>20) return null;
+async function prepareVideo(text){
+  try{
+    const r1=await fetch('/talk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    if(!r1.ok) return;
+    const d1=await r1.json();
+    if(!d1.talk_id) return;
+    const videoUrl=await pollTalk(d1.talk_id);
+    if(!videoUrl) return;
+    const sw=document.getElementById('sw');
+    const pImg=document.getElementById('pImg');
+    if(!audioPlaying){
+      // Audio already done - play video immediately
+      playVideo(videoUrl, sw, pImg);
+    } else {
+      // Audio still playing - store for later
+      pendingVideoUrl=videoUrl;
+    }
+  }catch(e){ console.log('Video prep error', e); }
+}
+
+async function pollTalk(talkId, attempts=0){
+  if(attempts>25) return null;
   await new Promise(r=>setTimeout(r,1000));
   try{
     const r=await fetch('/talk/'+talkId);
@@ -233,23 +265,24 @@ async function pollTalk(talkId,attempts=0){
     const d=await r.json();
     if(d.status==='done'&&d.result_url) return d.result_url;
     if(d.status==='error') return null;
-    return pollTalk(talkId,attempts+1);
+    return pollTalk(talkId, attempts+1);
   }catch(e){ return null; }
 }
 
-function playVideo(videoUrl,sw,pImg){
+function playVideo(videoUrl, sw, pImg){
   const container=pImg.parentElement;
   const vid=document.createElement('video');
   vid.src=videoUrl;
   vid.autoplay=true;
   vid.playsInline=true;
+  vid.muted=true;
   vid.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;z-index:4;filter:brightness(0.88) contrast(1.06) saturate(0.78);';
   currentVideo=vid;
   container.appendChild(vid);
   pImg.style.opacity='0';
   vid.onplay=()=>sw.classList.add('on');
   vid.onended=()=>{sw.classList.remove('on');pImg.style.opacity='1';vid.remove();currentVideo=null;autoListen();};
-  vid.onerror=()=>{pImg.style.opacity='1';vid.remove();currentVideo=null;sw.classList.remove('on');};
+  vid.onerror=()=>{pImg.style.opacity='1';vid.remove();currentVideo=null;sw.classList.remove('on');autoListen();};
 }
 
 /* VOICE INPUT */
