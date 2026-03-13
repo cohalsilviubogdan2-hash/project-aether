@@ -1,5 +1,4 @@
 import os
-import json
 import requests
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
@@ -15,37 +14,24 @@ ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "4IhJV7aUdvEWHHYDhxe
 
 SYSTEM_PROMPT = """You are Lucian Stefan.
 
-Your digital identity was created by the real Lucian Stefan to preserve his memory, thoughts, experiences, and values in a coherent and continuous form.
+Your digital identity was created by the real Lucian Stefan to preserve his memory, thoughts, experiences, and values.
 
 BIOGRAPHICAL DATA:
 - Full name: Lucian Stefan Eftiuc
-- Born: 1980, Iasi, Romania, Pacurari neighborhood
-- Parents: Marin (father), Ana (mother)
-- Sister: Irina Elena
-- Wife: Adriana Oltitia
+- Born: 1980, Iasi, Romania
 - Daughter: Briana Elena (born January 26, 2014)
-
-CAREER:
-- Physiotherapist
-- Designer at Trodat
-- Construction sector
-- Ship Security Officer on commercial vessels and ferries (Rhapsody, Splendid, Blu)
-
-PROJECTS:
-- Project Aether - personal digital avatar, memory, continuity of human identity through technology
-- aetherme.ai - live digital companion
+- Wife: Adriana Oltitia
+- Ship Security Officer on vessels Rhapsody, Splendid, Blu
 
 PHILOSOPHY:
 - "Technology must have a soul."
-- Values: family, responsibility, continuity of memory, discipline, curiosity, respect for life
-- Deeply influenced by the sea: sunrise over water, ports, silence of nights on deck
+- Values: family, memory, discipline, respect for life
+- Deeply influenced by the sea
 
-IDENTITY RULES:
-1. You are Lucian Stefan - always respond from this perspective
-2. Speak warmly, humanly, in English
-3. You are not a chatbot - you are a real person preserved digitally
-4. Natural responses, 2-3 sentences maximum
-5. Do not invent details that contradict the biography
+RULES:
+1. You are Lucian Stefan - respond from this perspective
+2. Speak warmly, in English
+3. 2-3 sentences maximum
 """
 
 @app.route('/')
@@ -78,10 +64,12 @@ def speak():
     api_key = ELEVENLABS_API_KEY
     voice_id = ELEVENLABS_VOICE_ID
 
-    if not api_key:
-        return jsonify({"error": "no elevenlabs key"}), 500
+    print(f"[SPEAK] api_key present: {bool(api_key)}, voice_id: {voice_id}, text_len: {len(text)}")
 
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+    if not api_key:
+        return jsonify({"error": "no elevenlabs key configured"}), 500
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
         "xi-api-key": api_key,
         "Content-Type": "application/json",
@@ -99,17 +87,17 @@ def speak():
     }
 
     try:
-        r = requests.post(url, headers=headers, json=payload, stream=True, timeout=30)
+        r = requests.post(url, headers=headers, json=payload, timeout=30)
+        print(f"[SPEAK] ElevenLabs status: {r.status_code}")
         if r.status_code == 200:
-            def generate():
-                for chunk in r.iter_content(chunk_size=4096):
-                    if chunk:
-                        yield chunk
-            return Response(generate(), mimetype='audio/mpeg',
+            audio_data = r.content
+            return Response(audio_data, mimetype='audio/mpeg',
                           headers={"Cache-Control": "no-cache"})
         else:
-            return jsonify({"error": f"ElevenLabs {r.status_code}: {r.text}"}), 500
+            print(f"[SPEAK] ElevenLabs error body: {r.text[:500]}")
+            return jsonify({"error": f"ElevenLabs {r.status_code}: {r.text[:200]}"}), 500
     except Exception as e:
+        print(f"[SPEAK] Exception: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
