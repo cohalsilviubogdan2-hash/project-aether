@@ -204,7 +204,7 @@ async function speak(text){
     const audio=new Audio(url);
     currentAudio=audio;
     audio.onplay=()=>sw.classList.add('on');
-    audio.onended=()=>{sw.classList.remove('on');URL.revokeObjectURL(url);currentAudio=null;};
+    audio.onended=()=>{sw.classList.remove('on');URL.revokeObjectURL(url);currentAudio=null;autoListen();};
     audio.onerror=()=>{sw.classList.remove('on');currentAudio=null;};
     audio.play().catch(()=>{});
   } catch(e){ sw.classList.remove('on'); }
@@ -238,6 +238,13 @@ function stopListen(){
   try{recognition.abort();}catch(e){}
 }
 vBtn.onclick=()=>listening?stopListen():startListen();
+
+function autoListen(){
+  // small delay then auto-start mic
+  setTimeout(()=>{
+    if(!busy && !listening) startListen();
+  }, 600);
+}
 
 /* SEND */
 async function send(){
