@@ -1,6 +1,6 @@
 import os
 import requests
-import base64
+import tempfile
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 import anthropic
@@ -64,15 +64,9 @@ def speak():
     if not text:
         return jsonify({"error": "no text"}), 400
 
-    api_key = ELEVENLABS_API_KEY
-    voice_id = ELEVENLABS_VOICE_ID
-
-    if not api_key:
-        return jsonify({"error": "no elevenlabs key"}), 500
-
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
     headers = {
-        "xi-api-key": api_key,
+        "xi-api-key": ELEVENLABS_API_KEY,
         "Content-Type": "application/json",
         "Accept": "audio/mpeg"
     }
@@ -86,83 +80,101 @@ def speak():
             "use_speaker_boost": True
         }
     }
-
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=30)
         if r.status_code == 200:
             return Response(r.content, mimetype='audio/mpeg',
                           headers={"Cache-Control": "no-cache"})
-        else:
-            print(f"[SPEAK] ElevenLabs {r.status_code}: {r.text[:200]}")
-            return jsonify({"error": f"ElevenLabs {r.status_code}"}), 500
+        return jsonify({"error": f"ElevenLabs {r.status_code}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/talk', methods=['POST'])
 def talk():
-    """Create D-ID talking video from text"""
     data = request.json
     text = data.get('text', '')
     if not text:
         return jsonify({"error": "no text"}), 400
 
-    headers = {
-        "Authorization": f"Basic {DID_API_KEY}",
-        "Content-Type": "application/json"
+    # Step 1: Get audio from ElevenLabs
+    el_url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
+    el_headers = {
+        "xi-api-key": ELEVENLABS_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg"
     }
+    el_payload = {
+        "text": text,
+        "model_id": "eleven_turbo_v2_5",
+        "voice_settings": {
+            "stability": 0.35,
+            "similarity_boost": 0.85,
+            "style": 0.35,
+            "use_speaker_boost": True
+        }
+    }
+    try:
+        el_r = requests.post(el_url, headers=el_headers, json=el_payload, timeout=30)
+        if el_r.status_code != 200:
+            return jsonify({"error": f"ElevenLabs {el_r.status_code}"}), 500
+        audio_bytes = el_r.content
+    except Exception as e:
+        return jsonify({"error": f"ElevenLabs exception: {e}"}), 500
 
-    # Create talk
-    payload = {
+    # Step 2: Upload audio to D-ID
+    did_headers = {
+        "Authorization": f"Basic {DID_API_KEY}",
+    }
+    try:
+        upload_r = requests.post(
+            "https://api.d-id.com/audios",
+            headers=did_headers,
+            files={"audio": ("audio.mp3", audio_bytes, "audio/mpeg")},
+            timeout=30
+        )
+        print(f"[TALK] D-ID audio upload: {upload_r.status_code} {upload_r.text[:200]}")
+        if upload_r.status_code not in (200, 201):
+            return jsonify({"error": f"D-ID audio upload {upload_r.status_code}: {upload_r.text[:100]}"}), 500
+        audio_url = upload_r.json().get("url")
+    except Exception as e:
+        return jsonify({"error": f"D-ID upload exception: {e}"}), 500
+
+    # Step 3: Create D-ID talk with audio URL
+    talk_payload = {
         "source_url": DID_IMAGE_URL,
         "script": {
-            "type": "text",
-            "input": text,
-            "provider": {
-                "type": "elevenlabs",
-                "voice_id": ELEVENLABS_VOICE_ID,
-                "voice_config": {
-                    "stability": 0.35,
-                    "similarity_boost": 0.85,
-                    "style": 0.35,
-                    "use_speaker_boost": True
-                },
-                "model_id": "eleven_turbo_v2_5"
-            }
+            "type": "audio",
+            "audio_url": audio_url
         },
         "config": {
             "fluent": True,
             "pad_audio": 0.0
         }
     }
-
     try:
-        r = requests.post("https://api.d-id.com/talks", headers=headers, json=payload, timeout=30)
-        print(f"[TALK] D-ID create status: {r.status_code}, body: {r.text[:300]}")
-        if r.status_code in (200, 201):
-            talk_id = r.json().get('id')
+        talk_r = requests.post(
+            "https://api.d-id.com/talks",
+            headers={**did_headers, "Content-Type": "application/json"},
+            json=talk_payload,
+            timeout=30
+        )
+        print(f"[TALK] D-ID talk create: {talk_r.status_code} {talk_r.text[:200]}")
+        if talk_r.status_code in (200, 201):
+            talk_id = talk_r.json().get('id')
             return jsonify({"talk_id": talk_id})
-        else:
-            return jsonify({"error": f"D-ID {r.status_code}: {r.text[:200]}"}), 500
+        return jsonify({"error": f"D-ID {talk_r.status_code}: {talk_r.text[:200]}"}), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"D-ID talk exception: {e}"}), 500
 
 @app.route('/talk/<talk_id>', methods=['GET'])
 def get_talk(talk_id):
-    """Poll D-ID talk status"""
-    headers = {
-        "Authorization": f"Basic {DID_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Basic {DID_API_KEY}"}
     try:
         r = requests.get(f"https://api.d-id.com/talks/{talk_id}", headers=headers, timeout=15)
-        print(f"[TALK] Poll {talk_id}: {r.status_code}")
         if r.status_code == 200:
             d = r.json()
-            status = d.get('status')
-            result_url = d.get('result_url')
-            return jsonify({"status": status, "result_url": result_url})
-        else:
-            return jsonify({"error": f"D-ID {r.status_code}"}), 500
+            return jsonify({"status": d.get('status'), "result_url": d.get('result_url')})
+        return jsonify({"error": f"D-ID {r.status_code}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
