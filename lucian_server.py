@@ -14,7 +14,7 @@ ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "4IhJV7aUdvEWHHYDhxe
 DID_API_KEY = os.environ.get("DID_API_KEY", "Y29oYWxzaWx2aXVib2dkYW4yQGdtYWlsLmNvbQ:oIWM78B0oHhB2zP0FGtUh")
 
 # Talk ID with the new Lucian photo
-LUCIAN_TALK_ID = "tlk_gjTy0_H8hCfTu87pwixZF"
+LUCIAN_TALK_ID = "tlk_w5WQy6QAYtFFCI35VjyDP"
 
 SYSTEM_PROMPT = """You are Lucian Stefan.
 
