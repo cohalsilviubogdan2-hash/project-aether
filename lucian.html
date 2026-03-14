@@ -187,10 +187,8 @@ function showDots(){
 }
 function hideDots(){const t=document.getElementById('tid');if(t)t.remove();}
 
-/* AUDIO INSTANT + VIDEO IN PARALLEL */
+/* D-ID VIDEO WITH SOUND */
 let currentVideo=null;
-let pendingVideoUrl=null;
-let audioPlaying=false;
 
 async function speak(text){
   const sw=document.getElementById('sw');
@@ -198,66 +196,35 @@ async function speak(text){
   if(currentAudio){currentAudio.pause();currentAudio=null;}
   if(currentVideo){currentVideo.pause();currentVideo.remove();currentVideo=null;pImg.style.opacity='1';}
   sw.classList.remove('on');
-  audioPlaying=false;
-  pendingVideoUrl=null;
 
-  // Launch both in parallel
-  const audioPromise=playAudio(text, sw, pImg);
-  const videoPromise=prepareVideo(text);
-
-  await audioPromise;
-}
-
-async function playAudio(text, sw, pImg){
-  try{
-    const res=await fetch('/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-    if(!res.ok) return;
-    const blob=await res.blob();
-    const url=URL.createObjectURL(blob);
-    const audio=new Audio(url);
-    currentAudio=audio;
-    audioPlaying=true;
-    audio.onplay=()=>sw.classList.add('on');
-    audio.onended=()=>{
-      sw.classList.remove('on');
-      URL.revokeObjectURL(url);
-      currentAudio=null;
-      audioPlaying=false;
-      // If video is ready, play it now
-      if(pendingVideoUrl){
-        playVideo(pendingVideoUrl, sw, pImg);
-        pendingVideoUrl=null;
-      } else {
-        autoListen();
-      }
-    };
-    audio.onerror=()=>{sw.classList.remove('on');currentAudio=null;audioPlaying=false;};
-    audio.play().catch(()=>{});
-  }catch(e){ sw.classList.remove('on'); }
-}
-
-async function prepareVideo(text){
+  // Generate D-ID video (includes audio)
   try{
     const r1=await fetch('/talk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-    if(!r1.ok) return;
+    if(!r1.ok) throw new Error('talk failed');
     const d1=await r1.json();
-    if(!d1.talk_id) return;
+    if(!d1.talk_id) throw new Error('no talk_id');
     const videoUrl=await pollTalk(d1.talk_id);
-    if(!videoUrl) return;
-    const sw=document.getElementById('sw');
-    const pImg=document.getElementById('pImg');
-    if(!audioPlaying){
-      // Audio already done - play video immediately
-      playVideo(videoUrl, sw, pImg);
-    } else {
-      // Audio still playing - store for later
-      pendingVideoUrl=videoUrl;
-    }
-  }catch(e){ console.log('Video prep error', e); }
+    if(!videoUrl) throw new Error('no video url');
+    playVideo(videoUrl, sw, pImg);
+  }catch(e){
+    console.log('D-ID error:', e);
+    // Fallback: ElevenLabs audio only
+    try{
+      const res=await fetch('/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+      if(!res.ok) return;
+      const blob=await res.blob();
+      const url=URL.createObjectURL(blob);
+      const audio=new Audio(url);
+      currentAudio=audio;
+      audio.onplay=()=>sw.classList.add('on');
+      audio.onended=()=>{sw.classList.remove('on');URL.revokeObjectURL(url);currentAudio=null;autoListen();};
+      audio.play().catch(()=>{});
+    }catch(e2){}
+  }
 }
 
 async function pollTalk(talkId, attempts=0){
-  if(attempts>25) return null;
+  if(attempts>30) return null;
   await new Promise(r=>setTimeout(r,1000));
   try{
     const r=await fetch('/talk/'+talkId);
@@ -275,14 +242,13 @@ function playVideo(videoUrl, sw, pImg){
   vid.src=videoUrl;
   vid.autoplay=true;
   vid.playsInline=true;
-  vid.muted=true;
   vid.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;z-index:4;filter:brightness(0.88) contrast(1.06) saturate(0.78);';
   currentVideo=vid;
   container.appendChild(vid);
   pImg.style.opacity='0';
   vid.onplay=()=>sw.classList.add('on');
   vid.onended=()=>{sw.classList.remove('on');pImg.style.opacity='1';vid.remove();currentVideo=null;autoListen();};
-  vid.onerror=()=>{pImg.style.opacity='1';vid.remove();currentVideo=null;sw.classList.remove('on');autoListen();};
+  vid.onerror=()=>{pImg.style.opacity='1';vid.remove();currentVideo=null;sw.classList.remove('on');};
 }
 
 /* VOICE INPUT */
