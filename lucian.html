@@ -108,6 +108,12 @@ textarea#ti::placeholder { color:rgba(255,255,255,0.15); }
     <div class="msgs" id="msgs"></div>
     <div class="input-zone">
       <textarea id="ti" rows="1" placeholder="..."></textarea>
+      <button class="icon-btn" id="camBtn" title="Toggle camera">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </button>
       <button class="icon-btn" id="vBtn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <rect x="9" y="2" width="6" height="13" rx="3"/>
@@ -145,6 +151,35 @@ const PASS='lucian2026';
 const hist=[];
 let busy=false,listening=false,recognition=null;
 let currentAudio=null;
+let cameraStream=null;
+let cameraActive=false;
+
+/* TIME CONTEXT */
+function getTimeContext(){
+  const now=new Date();
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const h=now.getHours();
+  const min=now.getMinutes().toString().padStart(2,'0');
+  const day=days[now.getDay()];
+  const date=now.getDate();
+  const month=months[now.getMonth()];
+  const year=now.getFullYear();
+  let period='';
+  if(h>=5&&h<12) period='morning';
+  else if(h>=12&&h<17) period='afternoon';
+  else if(h>=17&&h<21) period='evening';
+  else period='night';
+  return `Current date and time: ${day}, ${month} ${date}, ${year} — ${h}:${min}. It is ${period}.`;
+}
+
+function getGreeting(){
+  const h=new Date().getHours();
+  if(h>=5&&h<12) return "Good morning.";
+  if(h>=12&&h<17) return "Good afternoon.";
+  if(h>=17&&h<21) return "Good evening.";
+  return "It's late.";
+}
 
 /* PASSWORD */
 function unlock(){
@@ -152,7 +187,7 @@ function unlock(){
   if(v===PASS){
     document.getElementById('pw').classList.add('gone');
     document.getElementById('app').classList.add('on');
-    addL("Hi, I am Project Aether. An artificial intelligence entity designed to preserve and carry forward the memory of Lucian.");
+    sendProactiveGreeting();
   } else {
     document.getElementById('pwErr').textContent='Access denied.';
     document.getElementById('pwIn').value='';
@@ -287,7 +322,53 @@ function autoListen(){
   }, 600);
 }
 
-/* SEND */
+/* PROACTIVE GREETING */
+async function sendProactiveGreeting(){
+  showDots();
+  busy=true;
+  const timeCtx=getTimeContext();
+  const greeting=getGreeting();
+  try{
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      messages:[{role:'user',content:`[SYSTEM CONTEXT: ${timeCtx}]\n[USER has just opened the interface. Generate a short, atmospheric opening greeting in character as Aether — Lucian's digital presence. Keep it under 2 sentences. Start with "${greeting}" or a variation. Be warm but not sentimental. Reference the time naturally if relevant.]`}]
+    })});
+    const d=await r.json();
+    hideDots();
+    addL(d.reply||'...');
+  }catch(e){hideDots();addL(`${greeting} I am Aether. Lucian's memory, preserved.`);}
+  busy=false;
+}
+
+/* CAMERA */
+async function startCamera(){
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    cameraActive=true;
+    document.getElementById('camBtn').style.borderColor='rgba(74,143,212,0.6)';
+    document.getElementById('camBtn').style.color='var(--accent)';
+  }catch(e){cameraActive=false;}
+}
+
+function stopCamera(){
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+  cameraActive=false;
+  document.getElementById('camBtn').style.borderColor='';
+  document.getElementById('camBtn').style.color='';
+}
+
+async function captureFrame(){
+  if(!cameraStream) return null;
+  const video=document.createElement('video');
+  video.srcObject=cameraStream;
+  video.play();
+  await new Promise(r=>setTimeout(r,300));
+  const canvas=document.createElement('canvas');
+  canvas.width=320;canvas.height=240;
+  canvas.getContext('2d').drawImage(video,0,0,320,240);
+  return canvas.toDataURL('image/jpeg',0.7).split(',')[1];
+}
+
+
 async function send(){
   const inp=document.getElementById('ti');
   const text=inp.value.trim();
@@ -296,14 +377,29 @@ async function send(){
   busy=true;document.getElementById('sBtn').disabled=true;
   addU(text);showDots();
   const msgs=hist.filter(m=>m.role==='user'||m.role==='assistant').slice(-20);
+  // Inject time context
+  const timeCtx=getTimeContext();
+  const enrichedMsgs=[...msgs];
+  if(enrichedMsgs.length>0){
+    const last=enrichedMsgs[enrichedMsgs.length-1];
+    if(last.role==='user'){
+      enrichedMsgs[enrichedMsgs.length-1]={...last,content:`[${timeCtx}]\n${last.content}`};
+    }
+  }
+  // Camera note
+  if(cameraActive&&enrichedMsgs.length>0){
+    const last=enrichedMsgs[enrichedMsgs.length-1];
+    enrichedMsgs[enrichedMsgs.length-1]={...last,content:`[Camera active — user is present]\n${last.content}`};
+  }
   try{
-    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:msgs})});
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:enrichedMsgs})});
     const d=await r.json();
     hideDots();
     addL(d.reply||'...');
   }catch(e){hideDots();addL('...');}
   busy=false;document.getElementById('sBtn').disabled=false;
 }
+document.getElementById('camBtn').onclick=()=>{cameraActive?stopCamera():startCamera();};
 document.getElementById('sBtn').onclick=send;
 document.getElementById('ti').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}};
 document.getElementById('ti').oninput=function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';};
