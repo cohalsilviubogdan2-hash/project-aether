@@ -73,6 +73,31 @@ def index():
 def chat():
     data = request.json
     messages = data.get('messages', [])
+    image_b64 = data.get('image')  # base64 JPEG from camera
+
+    # If camera frame present, inject as vision into last user message
+    if image_b64 and messages:
+        last = messages[-1]
+        if last.get('role') == 'user':
+            text_content = last.get('content', '')
+            messages[-1] = {
+                'role': 'user',
+                'content': [
+                    {
+                        'type': 'image',
+                        'source': {
+                            'type': 'base64',
+                            'media_type': 'image/jpeg',
+                            'data': image_b64
+                        }
+                    },
+                    {
+                        'type': 'text',
+                        'text': text_content
+                    }
+                ]
+            }
+
     try:
         response = client.messages.create(
             model="claude-sonnet-4-20250514",

@@ -386,13 +386,15 @@ async function send(){
       enrichedMsgs[enrichedMsgs.length-1]={...last,content:`[${timeCtx}]\n${last.content}`};
     }
   }
-  // Camera note
-  if(cameraActive&&enrichedMsgs.length>0){
-    const last=enrichedMsgs[enrichedMsgs.length-1];
-    enrichedMsgs[enrichedMsgs.length-1]={...last,content:`[Camera active — user is present]\n${last.content}`};
+  // Camera — capture real frame
+  let frameB64=null;
+  if(cameraActive){
+    try{frameB64=await captureFrame();}catch(e){}
   }
   try{
-    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:enrichedMsgs})});
+    const body={messages:enrichedMsgs};
+    if(frameB64) body.image=frameB64;
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();
     hideDots();
     addL(d.reply||'...');
