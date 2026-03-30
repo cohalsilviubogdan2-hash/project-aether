@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aether – AI Companion for Real Human Connection</title>
+<meta name="description" content="Aether is an empathic AI companion with a warm voice and real presence. Talk freely, feel understood. Try free.">
+<meta name="keywords" content="AI companion, emotional support, digital companion, AI chat, Aether">
+<meta property="og:title" content="Aether – AI Companion">
+<meta property="og:description" content="An empathic AI presence that listens, understands, and connects.">
+<meta property="og:url" content="https://aetherme.ai">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,200;0,300;0,400;1,200;1,300&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:#020106;font-family:'Jost',sans-serif;font-weight:300;color:#e8d5b0;}
+#cosmos{position:fixed;inset:0;z-index:0;}
+.nebula{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 70% 60% at 20% 30%,#0a1a3a1a,transparent),
+    radial-gradient(ellipse 60% 70% at 80% 70%,#1a050822,transparent),
+    radial-gradient(ellipse 40% 40% at 40% 40%,#f0a5000a,transparent);
+  animation:nebula 30s ease-in-out infinite alternate;}
+@keyframes nebula{0%{transform:scale(1);}100%{transform:scale(1.04);}}
+.grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0.15;}
+.app{position:relative;z-index:3;height:100dvh;display:flex;}
+.panel-left{width:50%;flex-shrink:0;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;border-right:1px solid #f0a50008;}
+.aether-figure{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;animation:lev 8s ease-in-out infinite;}
+@keyframes lev{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+.aether-img{height:100%;width:auto;object-fit:contain;object-position:center bottom;position:relative;z-index:2;animation:img-glow 6s ease-in-out infinite;}
+@keyframes img-glow{0%,100%{filter:drop-shadow(0 0 30px #f0a50044) drop-shadow(0 0 80px #f0a50018) brightness(1.05);}50%{filter:drop-shadow(0 0 55px #f0a50077) drop-shadow(0 0 140px #f0a50033) brightness(1.1);}}
+.figure-talking .aether-img{animation:talking-glow 1s ease-in-out infinite!important;}
+@keyframes talking-glow{0%,100%{filter:drop-shadow(0 0 50px #f0a500aa) drop-shadow(0 0 150px #f0a50055) brightness(1.15);}50%{filter:drop-shadow(0 0 90px #f0a500ee) drop-shadow(0 0 250px #f0a50088) brightness(1.2);}}
+.ambient{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 70% 90% at 50% 80%,#2a1a0a22,transparent);animation:ambient 6s ease-in-out infinite;}
+@keyframes ambient{0%,100%{opacity:0.6;}50%{opacity:1;}}
+#halo{position:absolute;inset:0;z-index:3;pointer-events:none;}
+.presence-info{position:absolute;bottom:28px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:10;}
+.state{font-family:'Cormorant Garamond',serif;font-size:11px;font-weight:200;letter-spacing:6px;text-transform:uppercase;font-style:italic;color:#ffffff28;transition:all 0.6s;}
+.voice-wave{display:flex;align-items:center;gap:3px;height:20px;opacity:0;transition:opacity 0.4s;}
+.voice-wave.active{opacity:1;}
+.voice-wave span{width:3px;border-radius:3px;background:#f0a500;animation:wave 0.9s ease-in-out infinite;}
+.voice-wave span:nth-child(1){height:4px;animation-delay:0s;}
+.voice-wave span:nth-child(2){height:11px;animation-delay:0.1s;}
+.voice-wave span:nth-child(3){height:18px;animation-delay:0.2s;}
+.voice-wave span:nth-child(4){height:11px;animation-delay:0.3s;}
+.voice-wave span:nth-child(5){height:4px;animation-delay:0.4s;}
+.voice-wave span:nth-child(6){height:8px;animation-delay:0.15s;}
+.voice-wave span:nth-child(7){height:15px;animation-delay:0.25s;}
+@keyframes wave{0%,100%{transform:scaleY(0.35);opacity:0.4;}50%{transform:scaleY(1);opacity:1;}}
+.panel-right{flex:1;display:flex;flex-direction:column;min-width:0;}
+.header{padding:28px 40px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.header-name{font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:200;letter-spacing:10px;text-transform:uppercase;color:#f0a50033;}
+.status-area{display:flex;align-items:center;gap:8px;}
+.status-text{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#ffffff18;font-family:'Cormorant Garamond',serif;font-style:italic;}
+.dot{width:5px;height:5px;border-radius:50%;background:#f0a500;box-shadow:0 0 8px #f0a500;animation:breathe 3s ease-in-out infinite;}
+@keyframes breathe{0%,100%{opacity:1;}50%{opacity:0.2;}}
+.mic-status{padding:6px 40px 0;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.mic-ring{width:10px;height:10px;border-radius:50%;border:1px solid #ffffff22;background:transparent;transition:all 0.3s;}
+.mic-ring.active{background:#e05050;border-color:#e05050;box-shadow:0 0 12px #e05050aa;animation:mic-live 1.2s ease-in-out infinite;}
+@keyframes mic-live{0%,100%{box-shadow:0 0 8px #e05050aa;}50%{box-shadow:0 0 20px #e05050;}}
+.mic-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#ffffff15;font-family:'Cormorant Garamond',serif;font-style:italic;transition:all 0.3s;}
+.mic-label.active{color:#e0505066;}
+/* Camera indicator */
+.cam-indicator{padding:4px 40px 0;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.cam-ring{width:10px;height:10px;border-radius:50%;border:1px solid #ffffff22;background:transparent;transition:all 0.3s;}
+.cam-ring.active{background:#50a0e0;border-color:#50a0e0;box-shadow:0 0 12px #50a0e0aa;animation:cam-live 1.2s ease-in-out infinite;}
+@keyframes cam-live{0%,100%{box-shadow:0 0 8px #50a0e0aa;}50%{box-shadow:0 0 20px #50a0e0;}}
+.cam-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#ffffff15;font-family:'Cormorant Garamond',serif;font-style:italic;transition:all 0.3s;}
+.cam-label.active{color:#50a0e066;}
+.chat{flex:1;overflow-y:auto;padding:16px 40px 8px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:#f0a50015 transparent;}
+.chat::-webkit-scrollbar{width:3px;}
+.chat::-webkit-scrollbar-thumb{background:#f0a50022;border-radius:2px;}
+.time-div{text-align:center;font-size:9px;letter-spacing:3px;color:#ffffff10;text-transform:uppercase;font-family:'Cormorant Garamond',serif;font-style:italic;margin:2px 0;}
+.msg{display:flex;flex-direction:column;gap:3px;animation:msg-in 0.45s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes msg-in{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.msg.aether{align-items:flex-start;max-width:90%;}
+.msg.user{align-items:flex-end;align-self:flex-end;max-width:75%;}
+.msg-role{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#ffffff12;padding:0 4px;font-family:'Cormorant Garamond',serif;font-style:italic;}
+.bubble{padding:14px 20px;border-radius:20px;font-size:15px;line-height:1.9;font-weight:300;}
+.msg.aether .bubble{background:linear-gradient(135deg,#0e091899,#060a1899);border:1px solid #f0a50018;border-bottom-left-radius:4px;color:#e8d5b0;backdrop-filter:blur(16px);}
+.msg.user .bubble{background:linear-gradient(135deg,#0e0a0499,#0a080299);border:1px solid #f0a50033;border-bottom-right-radius:4px;color:#e8d5b0;backdrop-filter:blur(16px);}
+.typing{display:flex;align-items:center;gap:6px;padding:14px 20px;background:#0e091899;border:1px solid #f0a50018;border-radius:20px;border-bottom-left-radius:4px;width:fit-content;backdrop-filter:blur(16px);}
+.typing span{width:4px;height:4px;border-radius:50%;background:#f0a500;animation:tb 1.6s ease-in-out infinite;}
+.typing span:nth-child(2){animation-delay:0.25s;}.typing span:nth-child(3){animation-delay:0.5s;}
+@keyframes tb{0%,60%,100%{transform:translateY(0);opacity:0.2;}30%{transform:translateY(-6px);opacity:1;}}
+.input-zone{flex-shrink:0;padding:10px 40px 52px;}
+.input-row{display:flex;align-items:flex-end;gap:12px;background:#06080ecc;border:1px solid #ffffff08;border-radius:32px;padding:12px 12px 12px 24px;transition:all 0.3s;backdrop-filter:blur(20px);}
+.input-row:focus-within{border-color:#f0a50044;box-shadow:0 0 40px #f0a50012;}
+.mic-btn{width:40px;height:40px;border-radius:50%;border:1px solid #f0a50033;background:transparent;color:#f0a50077;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;flex-shrink:0;}
+.mic-btn:hover{border-color:#f0a50077;color:#f0a500cc;background:#f0a5000f;}
+.mic-btn.listening{border-color:#e05050;color:#e05050;background:#e0505015;box-shadow:0 0 20px #e0505044;animation:mic-pulse 1s ease-in-out infinite;}
+@keyframes mic-pulse{0%,100%{box-shadow:0 0 15px #e0505044;}50%{box-shadow:0 0 35px #e05050aa;}}
+.mic-btn svg{width:16px;height:16px;}
+.cam-btn{width:40px;height:40px;border-radius:50%;border:1px solid #50a0e033;background:transparent;color:#50a0e077;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;flex-shrink:0;}
+.cam-btn:hover{border-color:#50a0e077;color:#50a0e0cc;background:#50a0e00f;}
+.cam-btn.active{border-color:#50a0e0;color:#50a0e0;background:#50a0e015;box-shadow:0 0 20px #50a0e044;}
+.cam-btn svg{width:16px;height:16px;}
+textarea{flex:1;background:transparent;border:none;outline:none;color:#e8d5b0;font-family:'Jost',sans-serif;font-weight:300;font-size:16px;line-height:1.6;resize:none;height:26px;max-height:140px;overflow-y:auto;scrollbar-width:none;}
+textarea::placeholder{color:#ffffff12;font-style:italic;font-family:'Cormorant Garamond',serif;font-size:15px;}
+textarea::-webkit-scrollbar{display:none;}
+.send-btn{width:44px;height:44px;border-radius:50%;border:none;background:linear-gradient(135deg,#f0a500,#c8780a);color:#0d0808;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.25s;box-shadow:0 0 20px #f0a50055;}
+.send-btn:hover{transform:scale(1.1);box-shadow:0 0 40px #f0a50099;}
+.send-btn svg{width:17px;height:17px;}
+/* Hidden video for camera capture */
+#cameraVideo{position:fixed;bottom:-9999px;left:-9999px;width:320px;height:240px;}
+#cameraCanvas{display:none;}
+@media(max-width:700px){.app{flex-direction:column;}.panel-left{width:100%;height:45vh;border-right:none;border-bottom:1px solid #f0a50010;}.panel-right{flex:1;min-height:0;}.header,.input-zone,.chat,.mic-status,.cam-indicator{padding-left:20px;padding-right:20px;}}
+</style>
+</head>
+<body>
+<canvas id="cosmos"></canvas>
+<div class="nebula"></div>
+<!-- Hidden camera elements -->
+<video id="cameraVideo" autoplay playsinline muted></video>
+<canvas id="cameraCanvas"></canvas>
+
+<div class="app">
+  <div class="panel-left" id="fig" onclick="pulse()">
+    <div class="ambient"></div>
+    <canvas id="halo"></canvas>
+    <div class="aether-figure">
+      <img class="aether-img" id="aetherImg" src="https://i.imgur.com/your-aether-image.png" onerror="this.style.opacity='0.3'" alt="Aether">
+    </div>
+    <div class="presence-info">
+      <div class="state" id="stateLabel">PRESENT</div>
+      <div class="voice-wave" id="voiceWave">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="header">
+      <div class="header-name">AETHER</div>
+      <div class="status-area">
+        <div class="status-text" id="statusText">present</div>
+        <div class="dot"></div>
+      </div>
+    </div>
+    <div class="mic-status">
+      <div class="mic-ring" id="micRing"></div>
+      <div class="mic-label" id="micLabel">microphone off</div>
+    </div>
+    <div class="cam-indicator">
+      <div class="cam-ring" id="camRing"></div>
+      <div class="cam-label" id="camLabel">camera off</div>
+    </div>
+
+    <div class="chat" id="chat"></div>
+
+    <div class="input-zone">
+      <div class="input-row">
+        <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+          </svg>
+        </button>
+        <textarea id="inp" placeholder="speak to Aether..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"
+          oninput="this.style.height='26px';this.style.height=this.scrollHeight+'px'"></textarea>
+        <button class="cam-btn" id="camBtn" onclick="toggleCamera()" title="Toggle camera">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 7l-7 5 7 5V7z"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+        </button>
+        <button class="send-btn" onclick="send()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================
+// STATE
+// =====================
+let messages = [];
+let isListening = false;
+let recognition = null;
+let cameraActive = false;
+let cameraStream = null;
+let currentAudio = null;
+
+// =====================
+// COSMOS CANVAS
+// =====================
+(function(){
+  const c=document.getElementById('cosmos'),ctx=c.getContext('2d');
+  let stars=[];
+  function resize(){c.width=innerWidth;c.height=innerHeight;stars=Array.from({length:200},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.2,o:Math.random(),s:Math.random()*0.005+0.001}));}
+  function draw(){ctx.clearRect(0,0,c.width,c.height);stars.forEach(s=>{s.o+=s.s;if(s.o>1||s.o<0)s.s*=-1;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(240,200,130,${s.o*0.6})`;ctx.fill();});requestAnimationFrame(draw);}
+  resize();draw();window.addEventListener('resize',resize);
+})();
+
+// =====================
+// HALO
+// =====================
+(function(){
+  const c=document.getElementById('halo'),ctx=c.getContext('2d');
+  let t=0;
+  function resize(){c.width=c.parentElement.offsetWidth;c.height=c.parentElement.offsetHeight;}
+  function draw(){ctx.clearRect(0,0,c.width,c.height);const cx=c.width/2,cy=c.height*0.42,r=Math.min(c.width,c.height)*0.28+Math.sin(t)*6;const g=ctx.createRadialGradient(cx,cy,r*0.5,cx,cy,r);g.addColorStop(0,'rgba(240,165,0,0.06)');g.addColorStop(1,'rgba(240,165,0,0)');ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();t+=0.018;requestAnimationFrame(draw);}
+  resize();draw();window.addEventListener('resize',resize);
+})();
+
+function pulse(){const f=document.getElementById('fig');f.style.transition='background 0.3s';f.style.background='radial-gradient(ellipse at center, #f0a50008, transparent)';setTimeout(()=>f.style.background='',400);}
+
+// =====================
+// CHAT UI
+// =====================
+function addMsg(role, text){
+  const chat=document.getElementById('chat');
+  const wrap=document.createElement('div');
+  wrap.className=`msg ${role}`;
+  const roleLabel=document.createElement('div');
+  roleLabel.className='msg-role';
+  roleLabel.textContent=role==='aether'?'AETHER':'YOU';
+  const bubble=document.createElement('div');
+  bubble.className='bubble';
+  bubble.textContent=text;
+  wrap.appendChild(roleLabel);
+  wrap.appendChild(bubble);
+  chat.appendChild(wrap);
+  chat.scrollTop=chat.scrollHeight;
+  return wrap;
+}
+
+function showTyping(){
+  const chat=document.getElementById('chat');
+  const t=document.createElement('div');
+  t.className='typing';t.id='typing';
+  t.innerHTML='<span></span><span></span><span></span>';
+  chat.appendChild(t);chat.scrollTop=chat.scrollHeight;
+}
+function hideTyping(){const t=document.getElementById('typing');if(t)t.remove();}
+
+function setState(s){
+  document.getElementById('stateLabel').textContent=s;
+  document.getElementById('statusText').textContent=s.toLowerCase();
+}
+
+// =====================
+// AUDIO (ElevenLabs)
+// =====================
+function speak(audioB64){
+  if(!audioB64)return;
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  try{
+    const bytes=atob(audioB64);
+    const arr=new Uint8Array(bytes.length);
+    for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);
+    const blob=new Blob([arr],{type:'audio/mpeg'});
+    const url=URL.createObjectURL(blob);
+    const audio=new Audio(url);
+    currentAudio=audio;
+    document.getElementById('fig').classList.add('figure-talking');
+    document.getElementById('voiceWave').classList.add('active');
+    setState('SPEAKING');
+    audio.play().catch(e=>console.log('Audio error:',e));
+    audio.onended=()=>{
+      document.getElementById('fig').classList.remove('figure-talking');
+      document.getElementById('voiceWave').classList.remove('active');
+      setState('PRESENT');
+      currentAudio=null;
+      URL.revokeObjectURL(url);
+    };
+  }catch(e){console.log('Speak error:',e);}
+}
+
+// =====================
+// CAMERA
+// =====================
+async function toggleCamera(){
+  if(!cameraActive){
+    try{
+      cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'},audio:false});
+      document.getElementById('cameraVideo').srcObject=cameraStream;
+      cameraActive=true;
+      document.getElementById('camBtn').classList.add('active');
+      document.getElementById('camRing').classList.add('active');
+      document.getElementById('camLabel').classList.add('active');
+      document.getElementById('camLabel').textContent='camera on';
+    }catch(e){
+      console.log('Camera error:',e);
+      addMsg('aether','I cannot access the camera right now...');
+    }
+  }else{
+    if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+    document.getElementById('cameraVideo').srcObject=null;
+    cameraActive=false;
+    document.getElementById('camBtn').classList.remove('active');
+    document.getElementById('camRing').classList.remove('active');
+    document.getElementById('camLabel').classList.remove('active');
+    document.getElementById('camLabel').textContent='camera off';
+  }
+}
+
+function captureFrame(){
+  if(!cameraActive||!cameraStream)return null;
+  const video=document.getElementById('cameraVideo');
+  const canvas=document.getElementById('cameraCanvas');
+  canvas.width=320;canvas.height=240;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(video,0,0,320,240);
+  const dataUrl=canvas.toDataURL('image/jpeg',0.7);
+  return dataUrl.split(',')[1]; // base64 only
+}
+
+// =====================
+// SEND MESSAGE
+// =====================
+async function send(){
+  const inp=document.getElementById('inp');
+  const text=inp.value.trim();
+  if(!text)return;
+  inp.value='';inp.style.height='26px';
+
+  addMsg('user',text);
+
+  // Add to history (only text messages for /chat)
+  messages.push({role:'user',content:text});
+
+  showTyping();
+  setState('THINKING');
+
+  try{
+    let response;
+
+    if(cameraActive){
+      // Use /vision endpoint with camera frame
+      const imageB64=captureFrame();
+      if(imageB64){
+        response=await fetch('/vision',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({image:imageB64,message:text})
+        });
+      }else{
+        // Camera active but no frame captured — fallback to chat
+        response=await fetch('/chat',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({messages})
+        });
+      }
+    }else{
+      // Normal chat without camera
+      response=await fetch('/chat',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({messages})
+      });
+    }
+
+    const data=await response.json();
+    hideTyping();
+
+    if(data.limit){
+      addMsg('aether',data.reply);
+      setState('PRESENT');
+      return;
+    }
+
+    const reply=data.reply||'...';
+    addMsg('aether',reply);
+    messages.push({role:'assistant',content:reply});
+
+    // Keep history manageable
+    if(messages.length>40)messages=messages.slice(-40);
+
+    speak(data.audio);
+    if(!data.audio)setState('PRESENT');
+
+    // Update remaining
+    if(data.remaining!==undefined&&data.remaining>=0){
+      console.log('Remaining messages today:',data.remaining);
+    }
+
+  }catch(e){
+    hideTyping();
+    addMsg('aether','Something interrupted us...');
+    setState('PRESENT');
+    console.error('Send error:',e);
+  }
+}
+
+// =====================
+// MICROPHONE (Speech Recognition)
+// =====================
+function toggleMic(){
+  if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){
+    addMsg('aether','Voice input is not supported in this browser...');return;
+  }
+  if(isListening){
+    if(recognition)recognition.stop();
+    return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();
+  recognition.continuous=false;
+  recognition.interimResults=false;
+  recognition.lang='en-US';
+
+  recognition.onstart=()=>{
+    isListening=true;
+    document.getElementById('micBtn').classList.add('listening');
+    document.getElementById('micRing').classList.add('active');
+    document.getElementById('micLabel').classList.add('active');
+    document.getElementById('micLabel').textContent='listening...';
+    setState('LISTENING');
+  };
+  recognition.onresult=(e)=>{
+    const transcript=e.results[0][0].transcript;
+    document.getElementById('inp').value=transcript;
+  };
+  recognition.onend=()=>{
+    isListening=false;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('micRing').classList.remove('active');
+    document.getElementById('micLabel').classList.remove('active');
+    document.getElementById('micLabel').textContent='microphone off';
+    setState('PRESENT');
+    const val=document.getElementById('inp').value.trim();
+    if(val)send();
+  };
+  recognition.onerror=(e)=>{
+    console.log('Speech error:',e.error);
+    isListening=false;
+    document.getElementById('micBtn').classList.remove('listening');
+    setState('PRESENT');
+  };
+  recognition.start();
+}
+
+// =====================
+// WAKE LOCK
+// =====================
+async function requestWakeLock(){
+  try{if('wakeLock' in navigator)await navigator.wakeLock.request('screen');}catch(e){}
+}
+requestWakeLock();
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')requestWakeLock();});
+
+// =====================
+// INIT
+// =====================
+window.addEventListener('load',()=>{
+  document.getElementById('inp').focus();
+  setState('PRESENT');
+});
+</script>
+</body>
+</html>
